@@ -57,6 +57,7 @@ func TestParseSuccess(t *testing.T) {
 	another("-metric", "0 - metric")
 	same(`metric offset 10h`)
 	same("metric[5m]")
+	same(`metric[$__interval]`)
 	same("metric[5m:3s]")
 	same("metric[$var1:$var2]")
 	same("metric[5m] offset 10h")
