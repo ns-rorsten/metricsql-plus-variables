@@ -1540,6 +1540,17 @@ func (p *parser) parsePositiveDuration() (*DurationExpr, error) {
 			s:            s,
 			needsParsing: true,
 		}
+		//log.Printf("%s", de.AppendString(nil))
+		return de, nil
+	}
+	if isVariable(s) {
+		de := &DurationExpr{
+			s:            s,
+			needsParsing: false,
+		}
+		if err := p.lex.Next(); err != nil {
+			return nil, err
+		}
 		return de, nil
 	}
 	if isPositiveDuration(s) {

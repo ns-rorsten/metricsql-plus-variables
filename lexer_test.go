@@ -1,6 +1,7 @@
 package metricsql
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"testing"
@@ -389,6 +390,10 @@ func TestLexerSuccess(t *testing.T) {
 	expectedTokens = []string{"metric", "[", "5m", "]"}
 	testLexerSuccess(t, s, expectedTokens)
 
+	s = "metric[$var]  "
+	expectedTokens = []string{"metric", "[", "$var", "]"}
+	testLexerSuccess(t, s, expectedTokens)
+
 	// Metric name with tag filters
 	s = `  metric:12.34{a="foo", b != "bar", c=~ "x.+y", d !~ "zzz"}`
 	expectedTokens = []string{`metric:12.34`, `{`, `a`, `=`, `"foo"`, `,`, `b`, `!=`, `"bar"`, `,`, `c`, `=~`, `"x.+y"`, `,`, `d`, `!~`, `"zzz"`, `}`}
@@ -397,6 +402,11 @@ func TestLexerSuccess(t *testing.T) {
 	// Metric name with offset
 	s = `   metric offset 10d   `
 	expectedTokens = []string{`metric`, `offset`, `10d`}
+	testLexerSuccess(t, s, expectedTokens)
+
+	// Metric name with offset as variable
+	s = `   metric offset $var   `
+	expectedTokens = []string{`metric`, `offset`, `$var`}
 	testLexerSuccess(t, s, expectedTokens)
 
 	// Func call
@@ -416,6 +426,11 @@ func TestLexerSuccess(t *testing.T) {
 
 	s = `12.34 * 0X34 + 0b11 + 0O77`
 	expectedTokens = []string{`12.34`, `*`, `0X34`, `+`, `0b11`, `+`, `0O77`}
+	testLexerSuccess(t, s, expectedTokens)
+
+	// Variables
+	s = "$var1 / $var2"
+	expectedTokens = []string{`$var1`, `/`, `$var2`}
 	testLexerSuccess(t, s, expectedTokens)
 
 	// Strings
@@ -665,4 +680,21 @@ func TestDurationError(t *testing.T) {
 	// M isn't a duration, but a 1e6 multiplier.
 	// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/3664
 	f("-5.3M")
+}
+
+func TestScanVariable(t *testing.T) {
+	f := func(s string, expected string, expect_err string) {
+		t.Helper()
+		result, err := scanVariable(s)
+		if result != expected || (err != nil && err.Error() != expect_err) {
+			t.Fatalf("unexpected outcome for %q: %q / %q (expected %q / %q)", s, result, err.Error(), expected, expect_err)
+		} else {
+			fmt.Printf("Passed: %s\n", result)
+		}
+	}
+	f("$foo", "$foo", "")
+	f("${foo}", "${foo}", "")
+	f("", "", "cannot find variable reference in string \"\"")
+	f("$ ", "", "cannot find name for bare variable in string \"$ \"")
+	f("${foo", "", "cannot find closing bracket for variable in string \"${foo\"")
 }

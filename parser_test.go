@@ -58,6 +58,7 @@ func TestParseSuccess(t *testing.T) {
 	same(`metric offset 10h`)
 	same("metric[5m]")
 	same("metric[5m:3s]")
+	same("metric[$var1:$var2]")
 	same("metric[5m] offset 10h")
 	same("metric[5m:3s] offset 10h")
 	same("metric[5i:3i] offset 10i")
@@ -65,6 +66,7 @@ func TestParseSuccess(t *testing.T) {
 	same(`metric{foo="bar"} offset 10h`)
 	same(`metric{foo!="bar"}[2d]`)
 	same(`metric{foo="bar"}[2d] offset 10h`)
+	same(`metric{foo="bar"}[$duration] offset $offset`)
 	same(`metric{foo="bar",b="sdfsdf"}[2d:3h] offset 10h`)
 	same(`metric{foo="bar",b="sdfsdf"}[2d:3h] offset 10`)
 	same(`metric{foo="bar",b="sdfsdf"}[2d:3] offset 10h`)
@@ -566,6 +568,7 @@ func TestParseSuccess(t *testing.T) {
 	another(`with(sum=123,now=5) union(with(sum=3,f(x)=x*sum) f(2) + f(3), with(x=5,sum=2) x*sum*now)`, `union(15, 50)`)
 	another(`WITH(now = sum(rate(my_metric_total)), before = sum(rate(my_metric_total) offset 1h)) now/before*100`, `(sum(rate(my_metric_total)) / sum(rate(my_metric_total) offset 1h)) * 100`)
 	another(`with (sum = x) sum`, `x`)
+	another(`with (labels = {labels="$value"}) sum(metric{labels}[$resolution])`, `sum(metric{labels="$value"}[$resolution])`)
 	another(`with (clamp_min=x) clamp_min`, `x`)
 	another(`with (now=now(), sum=sum()) now`, `now()`)
 	another(`with (now=now(), sum=sum()) now()`, `now()`)
@@ -575,6 +578,7 @@ func TestParseSuccess(t *testing.T) {
 	another(`with (rate(a) = b) c`, `c`)
 	another(`rate(x) + with (rate(a,b)=a*b) rate(2,b)`, `rate(x) + (2 * b)`)
 	another(`with (sum(a,b)=a+b) sum(c,d)`, `c + d`)
+
 }
 
 func TestParseError(t *testing.T) {

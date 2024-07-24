@@ -103,6 +103,13 @@ again:
 		}
 		goto tokenFoundLabel
 	}
+	if isVariablePrefix(s) {
+		token, err = scanVariable(s)
+		if err != nil {
+			return "", err
+		}
+		goto tokenFoundLabel
+	}
 	if n := scanBinaryOpPrefix(s); n > 0 {
 		token = s[:n]
 		goto tokenFoundLabel
@@ -152,6 +159,36 @@ func scanString(s string) (string, error) {
 		}
 		i++
 	}
+}
+
+func isAlnumOrUnderscore(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_'
+}
+
+func scanVariable(s string) (string, error) {
+	var token string
+
+	if len(s) < 2 {
+		return "", fmt.Errorf("cannot find variable reference in string %q", s)
+	}
+
+	if s[1] == '{' {
+		n := strings.IndexByte(s[2:], '}')
+		if n < 0 {
+			return "", fmt.Errorf("cannot find closing bracket for variable in string %q", s)
+		}
+		token = s[:n+3]
+	} else {
+		i := 1
+		for i < len(s) && isAlnumOrUnderscore(rune(s[i])) {
+			i++
+		}
+		if i == 1 {
+			return "", fmt.Errorf("cannot find name for bare variable in string %q", s)
+		}
+		token = s[:i]
+	}
+	return token, nil
 }
 
 func parsePositiveNumber(s string) (float64, error) {
@@ -450,6 +487,21 @@ func isStringPrefix(s string) bool {
 	default:
 		return false
 	}
+}
+
+func isVariablePrefix(s string) bool {
+	if len(s) == 0 || s[0] != '$' {
+		return false
+	}
+	return true
+}
+
+func isVariable(s string) bool {
+	if !isVariablePrefix(s) {
+		return false
+	}
+	_, err := scanVariable(s)
+	return err == nil
 }
 
 func isPositiveNumberPrefix(s string) bool {
