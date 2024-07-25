@@ -473,11 +473,16 @@ func (p *parser) parseSingleExprWithoutRollupSuffix() (Expr, error) {
 	if isIdentPrefix(p.lex.Token) {
 		return p.parseIdentExpr()
 	}
+	if isVariable(p.lex.Token) {
+		return p.parseVariableExpr()
+	}
 	switch p.lex.Token {
 	case "(":
 		return p.parseParensExpr()
 	case "{":
 		return p.parseMetricExpr()
+	case "$":
+		return p.parseVariableExpr()
 	case "-":
 		// Unary minus. Substitute `-expr` with `0 - expr`
 		if err := p.lex.Next(); err != nil {
@@ -2369,4 +2374,22 @@ func (me *MetricExpr) getMetricName() string {
 
 func (lf *LabelFilter) isMetricNameFilter() bool {
 	return lf.Label == "__name__" && !lf.IsNegative && !lf.IsRegexp
+}
+
+type VariableExpr struct {
+	S string
+}
+
+func (v *VariableExpr) AppendString(dst []byte) []byte {
+	return append(dst, v.S...)
+}
+
+func (p *parser) parseVariableExpr() (*VariableExpr, error) {
+	varExpr := &VariableExpr{
+		S: p.lex.Token,
+	}
+	if err := p.lex.Next(); err != nil {
+		return varExpr, err
+	}
+	return varExpr, nil
 }

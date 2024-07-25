@@ -380,6 +380,9 @@ func TestParseSuccess(t *testing.T) {
 	// funcName with escape chars
 	another(`r\a\te(m[5m])`, `rate(m[5m])`)
 
+	// some variable permutations
+	same(`$var[10m]`)
+
 	// aggrFuncExpr
 	same(`sum(http_server_request) by()`)
 	same(`sum(http_server_request) by(job)`)
@@ -569,7 +572,7 @@ func TestParseSuccess(t *testing.T) {
 	another(`with(sum=123,now=5) union(with(sum=3,f(x)=x*sum) f(2) + f(3), with(x=5,sum=2) x*sum*now)`, `union(15, 50)`)
 	another(`WITH(now = sum(rate(my_metric_total)), before = sum(rate(my_metric_total) offset 1h)) now/before*100`, `(sum(rate(my_metric_total)) / sum(rate(my_metric_total) offset 1h)) * 100`)
 	another(`with (sum = x) sum`, `x`)
-	another(`with (labels = {labels="$value"}) sum(metric{labels}[$resolution])`, `sum(metric{labels="$value"}[$resolution])`)
+	another(`with (labels = {labels="$value"}) sum(metric{labels}[$resolution]) / $__interval`, `sum(metric{labels="$value"}[$resolution]) / $__interval`)
 	another(`with (clamp_min=x) clamp_min`, `x`)
 	another(`with (now=now(), sum=sum()) now`, `now()`)
 	another(`with (now=now(), sum=sum()) now()`, `now()`)
