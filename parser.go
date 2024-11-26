@@ -461,6 +461,9 @@ func isRollupStartToken(token string) bool {
 }
 
 func (p *parser) parseSingleExprWithoutRollupSuffix() (Expr, error) {
+	if isVariable(p.lex.Token) {
+		return p.parseVariableExpr()
+	}
 	if isPositiveDuration(p.lex.Token) {
 		return p.parsePositiveDuration()
 	}
@@ -472,9 +475,6 @@ func (p *parser) parseSingleExprWithoutRollupSuffix() (Expr, error) {
 	}
 	if isIdentPrefix(p.lex.Token) {
 		return p.parseIdentExpr()
-	}
-	if isVariable(p.lex.Token) {
-		return p.parseVariableExpr()
 	}
 	switch p.lex.Token {
 	case "(":
@@ -535,7 +535,7 @@ func (p *parser) parseStringExpr() (*StringExpr, error) {
 
 	for {
 		switch {
-		case isStringPrefix(p.lex.Token) || isIdentPrefix(p.lex.Token):
+		case isStringPrefix(p.lex.Token) || isIdentPrefix(p.lex.Token) || isVariable(p.lex.Token):
 			se.tokens = append(se.tokens, p.lex.Token)
 		default:
 			return nil, fmt.Errorf(`StringExpr: unexpected token %q; want "string"`, p.lex.Token)
@@ -774,6 +774,11 @@ func expandWithExpr(was []*withArgExpr, e Expr) (Expr, error) {
 					return nil, err
 				}
 				b = append(b, s...)
+				continue
+			}
+			// unquoted variables should be treated as string chars
+			if isVariablePrefix(token) {
+				b = append(b, token...)
 				continue
 			}
 			wa := getWithArgExpr(was, token)
@@ -1220,7 +1225,7 @@ func (p *parser) parseIdentList(allowStar bool) ([]string, error) {
 			}
 			return idents, nil
 		}
-		if !isIdentPrefix(p.lex.Token) {
+		if !(isIdentPrefix(p.lex.Token) || isVariable(p.lex.Token)) {
 			return nil, fmt.Errorf(`identList: unexpected token %q; want "ident"`, p.lex.Token)
 		}
 		idents = append(idents, unescapeIdent(p.lex.Token))
@@ -1555,6 +1560,13 @@ func (p *parser) parsePositiveDuration() (*DurationExpr, error) {
 		}
 		if err := p.lex.Next(); err != nil {
 			return nil, err
+		}
+		s = p.lex.Token
+		if s != ":" && s != "]" && s != ")" {
+			de.s += s
+			if err := p.lex.Next(); err != nil {
+				return nil, err
+			}
 		}
 		return de, nil
 	}

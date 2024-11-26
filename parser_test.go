@@ -382,6 +382,11 @@ func TestParseSuccess(t *testing.T) {
 
 	// some variable permutations
 	same(`$var[10m]`)
+	same(`metric[${var}s]`)
+	same(`metric[$var]`)
+	another(`sum by ($var) (metric[10m])`, `sum(metric[10m]) by($var)`)
+	same(`(metric[10m] offset $var) - $foo`)
+	another(`metric{label=~$unquotedVar}`, `metric{label=~"$unquotedVar"}`)
 
 	// aggrFuncExpr
 	same(`sum(http_server_request) by()`)

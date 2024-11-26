@@ -428,7 +428,7 @@ func appendEscapedIdent(dst []byte, s string) []byte {
 	i := 0
 	for i < len(s) {
 		r, size := utf8.DecodeRuneInString(s[i:])
-		if i == 0 && isFirstIdentChar(r) || i > 0 && isIdentChar(r) {
+		if isVariable(s) || i == 0 && isFirstIdentChar(r) || i > 0 && isIdentChar(r) {
 			dst = utf8.AppendRune(dst, r)
 		} else {
 			dst = appendEscapeSequence(dst, r)
@@ -678,20 +678,31 @@ func scanSingleDuration(s string, canBeNegative bool) int {
 	if s[0] == '-' && canBeNegative {
 		i++
 	}
-	for i < len(s) && isDecimalChar(s[i]) {
-		i++
-	}
-	if i == 0 || i == len(s) {
-		return -1
-	}
-	if s[i] == '.' {
-		j := i
-		i++
+	if isVariablePrefix(s[i:]) {
+		vari, err := scanVariable(s[i:])
+		if err != nil {
+			return -1
+		}
+		i += len(vari)
+		if i == len(s) {
+			return i
+		}
+	} else {
 		for i < len(s) && isDecimalChar(s[i]) {
 			i++
 		}
-		if i == j || i == len(s) {
+		if i == 0 || i == len(s) {
 			return -1
+		}
+		if s[i] == '.' {
+			j := i
+			i++
+			for i < len(s) && isDecimalChar(s[i]) {
+				i++
+			}
+			if i == j || i == len(s) {
+				return -1
+			}
 		}
 	}
 	switch unicode.ToLower(rune(s[i])) {
