@@ -254,7 +254,16 @@ func TestParseSuccess(t *testing.T) {
 	another(`m + ON (Foo) n[5m]`, `m + on(Foo) n[5m]`)
 	same(`m + ignoring(a,b) n[5m]`)
 	another(`1 or 2`, `1`)
+	another(`1 or NaN`, `1`)
+	another(`NaN or 1`, `1`)
+	another(`(1 > 0) or 2`, `1`)
+	another(`(1 < 0) or 2`, `2`)
+	another(`(1 < 0) or (2 < 0)`, `NaN`)
+	another(`NaN or NaN`, `NaN`)
 	another(`1 and 2`, `1`)
+	another(`1 and (1 > 0)`, `1`)
+	another(`1 and (1 < 0)`, `NaN`)
+	another(`1 and NaN`, `NaN`)
 	another(`1 unless 2`, `NaN`)
 	another(`1 default 2`, `1`)
 	another(`1 default NaN`, `1`)
@@ -933,6 +942,11 @@ func TestParseError(t *testing.T) {
 	f(`with (sum(a,b)=a+b) sum(x)`)
 	f(`with (rate()=foobar) rate(x)`)
 	f(`with (x={y}) x`)
+
+	// with template with {lf1 or lf2} isn't supported
+	f(`with (f(x) = m{x}) f({a="b" or c="d"})`)
+	f(`with (f(x) = m{x or y="z"}) f({a="b" or c="d"})`)
+	f(`with (f(__name__) = {__name__}) f({a="b" or c="d"})`)
 
 	// Invalid number of args at ct()
 	f(`with (ct={job="test", i="bar"}) ct + {ct, x="d"} + foo{ct, ct} + ct(1)`)
