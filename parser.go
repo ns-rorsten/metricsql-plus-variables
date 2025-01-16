@@ -32,6 +32,10 @@ func Parse(s string) (Expr, error) {
 	return e, nil
 }
 
+func SimpleParse(s string) (Expr, error) {
+	return parseInternal(s)
+}
+
 func parseInternal(s string) (Expr, error) {
 	var p parser
 	p.lex.Init(s)
@@ -1612,6 +1616,13 @@ type DurationExpr struct {
 	needsParsing bool
 }
 
+func MakeDurationExpr(s string) *DurationExpr {
+	return &DurationExpr{
+		s:            s,
+		needsParsing: false,
+	}
+}
+
 // AppendString appends string representation of de to dst and returns the result.
 func (de *DurationExpr) AppendString(dst []byte) []byte {
 	if de == nil {
@@ -1790,6 +1801,17 @@ func (ne *NumberExpr) AppendString(dst []byte) []byte {
 		return append(dst, ne.s...)
 	}
 	return strconv.AppendFloat(dst, ne.N, 'g', -1, 64)
+}
+
+func (ne *NumberExpr) Original() string {
+	return ne.s
+}
+
+func MakeNumberExpr(n float64, s string) *NumberExpr {
+	return &NumberExpr{
+		N: n,
+		s: s,
+	}
 }
 
 // parensExpr represents `(...)`.
