@@ -2426,19 +2426,40 @@ func (lf *LabelFilter) isMetricNameFilter() bool {
 }
 
 type VariableExpr struct {
-	S string
+	S         string
+	Fmt       string
+	Bracketed bool
 }
 
 func (v *VariableExpr) AppendString(dst []byte) []byte {
-	return append(dst, v.S...)
+	s := v.S
+	if v.Fmt != "" {
+		s += ":" + v.Fmt
+	}
+	if v.Fmt != "" || v.Bracketed {
+		s = "{" + s + "}"
+	}
+	s = "$" + s
+	return append(dst, s...)
 }
 
 func (p *parser) parseVariableExpr() (*VariableExpr, error) {
 	varExpr := &VariableExpr{
-		S: p.lex.Token,
+		S:         "",
+		Fmt:       "",
+		Bracketed: false,
 	}
-	if err := p.lex.Next(); err != nil {
-		return varExpr, err
+	s := p.lex.Token[1:]
+	if s[0] == '{' {
+		varExpr.Bracketed = true
+		s = s[1 : len(s)-1]
+		c := strings.Index(s, ":")
+		if c >= 0 {
+			varExpr.Fmt = s[c+1:]
+			s = s[:c]
+		}
 	}
-	return varExpr, nil
+	varExpr.S = s
+	err := p.lex.Next()
+	return varExpr, err
 }

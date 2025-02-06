@@ -391,6 +391,7 @@ func TestParseSuccess(t *testing.T) {
 
 	// some variable permutations
 	same(`$var[10m]`)
+	same(`${var:raw}`)
 	same(`metric[${var}s]`)
 	same(`metric[$var]`)
 	another(`sum by ($var) (metric[10m])`, `sum(metric[10m]) by($var)`)
