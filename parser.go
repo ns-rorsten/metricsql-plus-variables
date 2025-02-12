@@ -853,6 +853,16 @@ func expandWithExpr(was []*withArgExpr, e Expr) (Expr, error) {
 			for _, lfes := range t.labelFilterss {
 				var lfsNew []LabelFilter
 				for _, lfe := range lfes {
+					if isVariable(lfe.Label) {
+						lfsNew = append(lfsNew, LabelFilter{
+							Label:      "",
+							Value:      lfe.Label,
+							IsNegative: lfe.IsNegative,
+							IsRegexp:   lfe.IsRegexp,
+						})
+						continue
+					}
+
 					if lfe.Value == nil {
 						// Expand lfe.Label into lfsNew.
 						wa := getWithArgExpr(was, lfe.Label)
@@ -1362,11 +1372,15 @@ func (p *parser) parseLabelFilters(mf *labelFilterExpr) ([]*labelFilterExpr, err
 }
 
 func (p *parser) parseLabelFilterExpr() (*labelFilterExpr, error) {
-	if !isIdentPrefix(p.lex.Token) {
+	if !isIdentPrefix(p.lex.Token) && !isVariablePrefix(p.lex.Token) {
 		return nil, fmt.Errorf(`labelFilterExpr: unexpected token %q; want "ident"`, p.lex.Token)
 	}
 	var lfe labelFilterExpr
-	lfe.Label = unescapeIdent(p.lex.Token)
+	if isVariablePrefix(p.lex.Token) {
+		lfe.Label = p.lex.Token
+	} else {
+		lfe.Label = unescapeIdent(p.lex.Token)
+	}
 	if err := p.lex.Next(); err != nil {
 		return nil, err
 	}
@@ -2213,6 +2227,10 @@ type LabelFilter struct {
 
 // AppendString appends string representation of me to dst and returns the result.
 func (lf *LabelFilter) AppendString(dst []byte) []byte {
+	if lf.Label == "" {
+		// This is shorthand for variables in label filters
+		return append(dst, lf.Value...)
+	}
 	dst = appendEscapedIdent(dst, lf.Label)
 	dst = appendLabelFilterOp(dst, lf.IsNegative, lf.IsRegexp)
 	dst = strconv.AppendQuote(dst, lf.Value)
